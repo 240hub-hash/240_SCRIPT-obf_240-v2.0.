@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>-- 240 STUDIO - Anti-Bot Secure Gateway</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        monoBg: '#080404',
+                        cardBg: '#120808',
+                        editorBg: '#050202',
+                        borderSubtle: '#3f1515',
+                        accentRed: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #050202; }
+        ::-webkit-scrollbar-thumb { background: #3f1515; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ef4444; }
+        
+        body {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        .mono-glow {
+            text-shadow: 0 0 25px rgba(239, 68, 68, 0.4);
+        }
+        .box-glow {
+            box-shadow: 0 0 40px -10px rgba(239, 68, 68, 0.15);
+        }
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.35;
+        }
+    </style>
+</head>
+<body class="bg-monoBg text-zinc-100 font-sans min-h-screen flex flex-col justify-between selection:bg-red-600 selection:text-white relative overflow-x-hidden">
+
+    <canvas id="bgCanvas"></canvas>
+
+    <!-- Security Notification Modal -->
+    <div id="securityModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-cardBg border border-red-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl box-glow flex flex-col gap-4 text-center">
+            <div class="w-14 h-14 bg-red-600/20 border border-red-500 rounded-2xl flex items-center justify-center mx-auto text-red-500 text-2xl font-mono">
+                🛡️
+            </div>
+            <h3 class="text-xl font-bold font-mono text-white">ระบบความปลอดภัย Anti-Bot</h3>
+            <p id="modalMessage" class="text-xs sm:text-sm text-zinc-300 font-mono leading-relaxed">
+                ตรวจพบการพยายามเข้าถึงเมนูไม่อนุญาต ระบบ Anti-Bot เปิดใช้งานอยู่เพื่อปกป้องสคริปต์
+            </p>
+            <button onclick="closeSecurityModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-6 rounded-xl transition cursor-pointer font-mono text-sm">
+                รับทราบ
+            </button>
+        </div>
+    </div>
+
+    <!-- GATEWAY: Anti-Bot Verification Screen -->
+    <div id="verifyScreen" class="fixed inset-0 bg-monoBg z-40 flex items-center justify-center p-4">
+        <div class="bg-cardBg/95 backdrop-blur-xl border border-red-500/40 rounded-3xl max-w-lg w-full p-8 shadow-2xl box-glow flex flex-col gap-6 text-center relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-32 h-32 bg-red-600/10 rounded-full blur-2xl"></div>
+            <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-red-600/10 rounded-full blur-2xl"></div>
+
+            <div class="w-16 h-16 bg-red-600/20 border border-red-500/50 rounded-2xl flex items-center justify-center mx-auto text-red-500 text-3xl font-mono shadow-lg shadow-red-600/20">
+                🔒
+            </div>
+
+            <div>
+                <h2 class="text-2xl font-black font-mono text-white tracking-tight mono-glow">
+                    -- 240 <span class="text-red-500">GATEWAY</span>
+                </h2>
+                <p class="text-xs text-red-400/80 font-mono tracking-widest uppercase mt-1">
+                    ANTI-BOT & ANTI-SCRAPING SECURE VERIFICATION
+                </p>
+            </div>
+
+            <div class="bg-editorBg border border-borderSubtle rounded-2xl p-4 text-left flex flex-col gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                    <span class="text-xs font-mono font-bold text-zinc-200">ตรวจสอบความปลอดภัยเบื้องต้น</span>
+                </div>
+                <p class="text-[11px] font-mono text-zinc-400 leading-relaxed">
+                    ระบบป้องกันบอทอัตโนมัติเปิดใช้งานอยู่ กรุณายืนยันตัวตนของคุณก่อนเข้าสู่หน้าหลักของ 240 STUDIO
+                </p>
+            </div>
+
+            <div class="flex items-center justify-center bg-editorBg border border-borderSubtle p-4 rounded-2xl cursor-pointer hover:border-red-500 transition" onclick="toggleCheckbox()">
+                <label class="flex items-center gap-3 cursor-pointer select-none">
+                    <input type="checkbox" id="gatewayCheck" onchange="toggleVerifyBtn()" class="w-5 h-5 accent-red-600 rounded cursor-pointer">
+                    <span class="text-xs sm:text-sm font-mono text-zinc-200 font-bold">ฉันไม่ใช่บอทอัตโนมัติ (I am not a robot)</span>
+                </label>
+            </div>
+
+            <button type="button" id="btnEnterStudio" disabled onclick="enterStudio()" class="w-full bg-zinc-800 text-zinc-500 font-extrabold py-3.5 px-6 rounded-xl transition font-mono text-sm cursor-not-allowed shadow-md">
+                เข้าสู่หน้าหลัก 240 STUDIO
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN APP SCREEN (Hidden initially) -->
+    <div id="mainAppScreen" class="hidden flex-grow flex flex-col justify-between">
+        <header class="border-b border-borderSubtle bg-monoBg/80 backdrop-blur-xl sticky top-0 z-30 py-5 px-6">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-red-600/40 shrink-0 font-mono">
+                        240
+                    </div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white font-mono mono-glow">
+                            -- 240 <span class="text-red-500 font-light">STUDIO</span>
+                        </h1>
+                        <p class="text-xs text-red-400/80 font-mono tracking-widest uppercase mt-0.5">
+                            ANTI-BOT SECURE OBFUSCATOR &bull; STRICT GUARD
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 bg-cardBg border border-borderSubtle px-4 py-2 rounded-xl text-xs font-mono text-zinc-300 shadow-lg">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    <span class="font-semibold tracking-wider text-red-400">SECURE SESSION: VERIFIED</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full flex-grow flex flex-col gap-6 relative z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Input Panel -->
+                <div class="bg-cardBg/90 backdrop-blur-md border border-borderSubtle rounded-2xl p-5 shadow-2xl flex flex-col gap-3 box-glow">
+                    <div class="flex items-center justify-between text-xs font-mono text-zinc-400 border-b border-borderSubtle pb-3">
+                        <span class="flex items-center gap-2 text-zinc-200 font-bold uppercase tracking-wider text-sm">
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                            Input Script (.lua)
+                        </span>
+                        <span id="inputLineCount" class="bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md text-zinc-400">0 lines</span>
+                    </div>
+                    <textarea id="inputLua" spellcheck="false" placeholder="วางสคริปต์ Lua ของคุณที่นี่..." class="w-full h-96 sm:h-[460px] bg-editorBg text-zinc-300 border border-borderSubtle rounded-xl p-4 font-mono text-xs sm:text-sm focus:outline-none focus:border-red-500 transition resize-y leading-relaxed shadow-inner selection:bg-red-900"></textarea>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="bg-cardBg/90 backdrop-blur-md border border-borderSubtle rounded-2xl p-5 shadow-2xl flex flex-col gap-3 box-glow">
+                    <div class="flex items-center justify-between text-xs font-mono text-zinc-400 border-b border-borderSubtle pb-3">
+                        <span class="flex items-center gap-2 text-zinc-200 font-bold uppercase tracking-wider text-sm">
+                            <span class="w-2 h-2 rounded-full bg-white"></span>
+                            Output (HEE ASCII + BY240)
+                        </span>
+                        <span id="outputLineCount" class="bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md text-red-400 font-bold">0 lines</span>
+                    </div>
+                    <textarea id="outputLua" readonly spellcheck="false" placeholder="ผลลัพธ์สคริปต์ที่ดัดแปลงจะแสดงที่นี่..." class="w-full h-96 sm:h-[460px] bg-editorBg text-red-200/90 border border-borderSubtle rounded-xl p-4 font-mono text-xs sm:text-sm focus:outline-none focus:border-red-500 transition resize-y leading-relaxed shadow-inner whitespace-pre break-all selection:bg-red-900"></textarea>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3 py-4">
+                <button type="button" onclick="lockLuaScript()" id="btnLockScript" class="flex items-center gap-2.5 bg-red-600 hover:bg-red-500 text-white font-extrabold py-3.5 px-8 rounded-xl shadow-lg shadow-red-600/30 transition transform active:scale-95 text-sm sm:text-base cursor-pointer">
+                    <span>ดัดแปลงสคริปต์</span>
+                </button>
+
+                <button type="button" onclick="copyOutput()" class="flex items-center gap-2 bg-cardBg hover:bg-zinc-900 text-zinc-200 border border-borderSubtle font-semibold py-3.5 px-6 rounded-xl shadow-md transition active:scale-95 text-sm sm:text-base cursor-pointer">
+                    คัดลอกผลลัพธ์
+                </button>
+
+                <button type="button" onclick="downloadLua()" class="flex items-center gap-2 bg-cardBg hover:bg-zinc-900 text-zinc-200 border border-borderSubtle font-semibold py-3.5 px-6 rounded-xl shadow-md transition active:scale-95 text-sm sm:text-base cursor-pointer">
+                    ดาวน์โหลด .lua
+                </button>
+
+                <button type="button" onclick="clearAll()" class="flex items-center gap-2 bg-transparent hover:bg-zinc-900 text-zinc-400 hover:text-white border border-borderSubtle font-semibold py-3.5 px-5 rounded-xl transition text-sm sm:text-base cursor-pointer">
+                    ล้างข้อมูล
+                </button>
+            </div>
+
+            <!-- Status Bar -->
+            <div id="status" class="bg-cardBg/90 backdrop-blur-md border border-borderSubtle rounded-xl p-4 text-center text-xs sm:text-sm font-mono transition-all flex items-center justify-center text-zinc-300 font-medium shadow-lg">
+                ระบบ Anti-Bot ผ่านการตรวจสอบแล้ว พร้อมใช้งาน
+            </div>
+        </main>
+
+        <footer class="border-t border-borderSubtle bg-monoBg py-4 text-center text-xs text-zinc-500 font-mono relative z-10">
+            -- 240 STUDIO &bull; Anti-Bot Secure Guard &bull; Strict Protection Enabled
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            showSecurityModal("ไม่อนุญาตให้คลิกขวาหรือดึงข้อมูลโครงสร้างเว็บไซต์ด้วยระบบอัตโนมัติ (Anti-Bot Protection)");
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (
+                e.keyCode === 123 ||
+                (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) ||
+                (e.ctrlKey && e.keyCode === 85) ||
+                (e.ctrlKey && e.keyCode === 83)
+            ) {
+                e.preventDefault();
+                showSecurityModal("ตรวจพบการพยายามใช้คีย์ลัดตรวจสอบระบบหรือคัดลอกซอร์สโค้ด (Protected by Anti-Bot)");
+                return false;
+            }
+        });
+
+        function showSecurityModal(msg) {
+            document.getElementById('modalMessage').textContent = msg;
+            document.getElementById('securityModal').classList.remove('hidden');
+        }
+
+        function closeSecurityModal() {
+            document.getElementById('securityModal').classList.add('hidden');
+        }
+
+        // Gateway Verification Handler
+        function toggleCheckbox() {
+            const chk = document.getElementById('gatewayCheck');
+            chk.checked = !chk.checked;
+            toggleVerifyBtn();
+        }
+
+        function toggleVerifyBtn() {
+            const chk = document.getElementById('gatewayCheck').checked;
+            const btn = document.getElementById('btnEnterStudio');
+            if (chk) {
+                btn.disabled = false;
+                btn.classList.remove('bg-zinc-800', 'text-zinc-500', 'cursor-not-allowed');
+                btn.classList.add('bg-red-600', 'hover:bg-red-500', 'text-white', 'cursor-pointer', 'shadow-lg', 'shadow-red-600/40');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('bg-zinc-800', 'text-zinc-500', 'cursor-not-allowed');
+                btn.classList.remove('bg-red-600', 'hover:bg-red-500', 'text-white', 'cursor-pointer', 'shadow-lg', 'shadow-red-600/40');
+            }
+        }
+
+        function enterStudio() {
+            const chk = document.getElementById('gatewayCheck').checked;
+            if (!chk) return;
+            document.getElementById('verifyScreen').classList.add('hidden');
+            document.getElementById('mainAppScreen').classList.remove('hidden');
+        }
+
+        // Matrix Falling Red Rain Animation Background
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        const chars = "0124240abcdefABCDEF{}[]=<>+-*/~_";
+        const fontSize = 14;
+        const columns = Math.floor(width / fontSize);
+        const drops = [];
+        for (let i = 0; i < columns; i++) {
+            drops[i] = Math.floor(Math.random() * -height / fontSize);
+        }
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(8, 4, 4, 0.12)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = fontSize + 'px "JetBrains Mono", monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 33);
+
+        const ALPHABET = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+        const ALPHA_LEN = ALPHABET.length;
+
+        function generateName(index = 0) {
+            const glyphs = ["I", "l", "1", "i", "_", "a", "A", "0", "o"];
+            let name = "a_";
+            for (let i = 0; i < 8; i++) {
+                name += glyphs[Math.floor(Math.random() * glyphs.length)];
+            }
+            return name + index;
+        }
+
+        function randomBytes(length) {
+            const result = new Uint8Array(length);
+            if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+                window.crypto.getRandomValues(result);
+            } else {
+                for (let i = 0; i < length; i++) {
+                    result[i] = Math.floor(Math.random() * 256);
+                }
+            }
+            return result;
+        }
+
+        function xorByte(a, b) {
+            return (a ^ b) & 255;
+        }
+
+        function encodePrintable(bytes) {
+            let result = "";
+            for (let i = 0; i < bytes.length; i++) {
+                const value = bytes[i];
+                const high = Math.floor(value / ALPHA_LEN);
+                const low = value % ALPHA_LEN;
+                result += ALPHABET[high];
+                result += ALPHABET[low];
+            }
+            return result;
+        }
+
+        function encryptChunk(bytes, key, seed) {
+            const result = new Uint8Array(bytes.length);
+            for (let i = 0; i < bytes.length; i++) {
+                const k1 = key[(i + seed) % key.length];
+                const k2 = key[(i * 11 + seed + 7) % key.length];
+                const mask = (seed + i * 29 + i * i * 17 + 73) & 255;
+
+                let value = xorByte(bytes[i], k1);
+                value = xorByte(value, k2);
+                value = xorByte(value, mask);
+                result[i] = value;
+            }
+            return result;
+        }
+
+        function splitBytes(bytes, size) {
+            const result = [];
+            for (let i = 0; i < bytes.length; i += size) {
+                result.push(bytes.slice(i, Math.min(i + size, bytes.length)));
+            }
+            return result;
+        }
+
+        function buildLuaLoader(parts, n) {
+            const payload = parts.map(part => {
+                return `{d=${JSON.stringify(part.data)},k=${JSON.stringify(part.key)},s=${part.seed},o=${part.order}}`;
+            }).join(",");
+
+            const alphabetLua = JSON.stringify(ALPHABET);
+
+            const loader = `return (function(...) local ${n.P}={${payload}};local ${n.O}="";local ${n.A}=${alphabetLua};local ${n.X}=function(a,b)local r=0;local p=1;while a>0 or b>0 do local x=a%2;local y=b%2;if x~=y then r=r+p end;a=math.floor(a/2);b=math.floor(b/2);p=p*2 end;return r end;local ${n.D}=function(s)local t={};for i=1,#s do local c=string.sub(s,i,i);local v=string.find(${n.A},c,1,true);if not v then return nil end;t[#t+1]=v-1 end;local o={};for i=1,#t,2 do local a=t[i];local b=t[i+1];if b==nil then return nil end;o[#o+1]=a*${ALPHA_LEN}+b end;return o end;table.sort(${n.P},function(a,b)return a.o<b.o end);for ${n.J}=1,#${n.P} do local ${n.Q}=${n.P}[${n.J}];local ${n.B}=${n.D}(${n.Q}.d);local ${n.K}=${n.D}(${n.Q}.k);if not ${n.B} or not ${n.K} then error("Invalid payload") end;local ${n.S}=${n.Q}.s;for ${n.I}=1,#${n.B} do local ${n.K1}=${n.K}[((${n.I}-1+${n.S})%#${n.K})+1];local ${n.K2}=${n.K}[(((${n.I}-1)*11+${n.S}+7)%#${n.K})+1];local ${n.M}=(${n.S}+(${n.I}-1)*29+(${n.I}-1)*(${n.I}-1)*17+73)%256;local ${n.V}=${n.X}(${n.B}[${n.I}],${n.K1});${n.V}=${n.X}(${n.V},${n.K2});${n.V}=${n.X}(${n.V},${n.M});${n.O}=${n.O}..string.char(${n.V}) end end;local ${n.L}=loadstring or load;if not ${n.L} then error("Lua loader unavailable") end;local ${n.F},${n.E}=${n.L}(${n.O});if not ${n.F} then error("Compile Error: "..tostring(${n.E})) end;return ${n.F}(...) end)(...)`;
+
+            return loader.trim().replace(/\r/g, "").replace(/\n/g, "");
+        }
+
+        function lockLuaScript() {
+            const input = document.getElementById("inputLua").value;
+            const output = document.getElementById("outputLua");
+
+            if (!input.trim()) {
+                setStatus("กรุณาวางสคริปต์ Lua ก่อนเริ่มประมวลผล", "#ef4444");
+                output.value = "";
+                updateStats("", "");
+                return;
+            }
+
+            try {
+                const names = {
+                    P: generateName(1), O: generateName(2), A: generateName(3), X: generateName(4),
+                    D: generateName(5), J: generateName(6), Q: generateName(7), B: generateName(8),
+                    K: generateName(9), S: generateName(10), I: generateName(11), K1: generateName(12),
+                    K2: generateName(13), M: generateName(14), V: generateName(15), L: generateName(16),
+                    F: generateName(17), E: generateName(18), OK: generateName(19), R: generateName(20)
+                };
+
+                const sourceBytes = new TextEncoder().encode(input);
+                const chunkSize = 24;
+                const chunks = splitBytes(sourceBytes, chunkSize);
+                const parts = [];
+
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunk = chunks[i];
+                    const key = randomBytes(Math.max(48, chunk.length + 16));
+                    const seed = Math.floor(Math.random() * 0x7fffffff);
+                    const encrypted = encryptChunk(chunk, key, seed);
+
+                    parts.push({
+                        data: encodePrintable(encrypted),
+                        key: encodePrintable(key),
+                        seed: seed,
+                        order: i
+                    });
+                }
+
+                const loader = buildLuaLoader(parts, names);
+                
+                // HEE ASCII Art with precisely centered BY240
+                const asciiLines = [
+                    "--  ██╗  ██╗ ███████╗ ███████╗",
+                    "--  ██║  ██║ ██╔════╝ ██╔════╝",
+                    "--  ███████║ █████╗   █████╗  ",
+                    "--  ██╔══██║ ██╔══╝   ██╔══╝  ",
+                    "--  ██║  ██║ ███████╗ ███████╗",
+                    "--  ╚═╝  ╚═╝ ╚══════╝ ╚══════╝",
+                    "--            BY240             "
+                ];
+                const asciiHeader = asciiLines.join("\n");
+
+                const resultLocked = asciiHeader + "\n\n" + loader;
+                output.value = resultLocked;
+
+                updateStats(input, resultLocked);
+                setStatus("ดัดแปลงสคริปต์สำเร็จ (ระบบ Anti-Bot ป้องกันเรียบร้อย)", "#ef4444");
+            } catch (err) {
+                console.error(err);
+                setStatus("เกิดข้อผิดพลาด: " + err.message, "#ef4444");
+            }
+        }
+
+        function updateStats(input, output) {
+            const inputLines = input ? input.split('\n').length : 0;
+            const outputLines = output ? output.split('\n').length : 0;
+            document.getElementById('inputLineCount').textContent = `${inputLines} lines`;
+            document.getElementById('outputLineCount').textContent = `${outputLines} lines`;
+        }
+
+        function setStatus(msg, color) {
+            const status = document.getElementById("status");
+            status.style.color = color;
+            status.textContent = msg;
+        }
+
+        function copyOutput() {
+            const output = document.getElementById("outputLua").value;
+            if (!output) {
+                setStatus("ยังไม่มีเนื้อหาสคริปต์ กรุณากดดัดแปลงสคริปต์ก่อน", "#ef4444");
+                return;
+            }
+            const temp = document.createElement("textarea");
+            temp.value = output;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand("copy");
+            document.body.removeChild(temp);
+            setStatus("คัดลอกผลลัพธ์ลง Clipboard เรียบร้อยแล้ว", "#ffffff");
+        }
+
+        function downloadLua() {
+            const output = document.getElementById("outputLua").value;
+            if (!output) return;
+            const blob = new Blob([output], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Script_AntiBot_240_" + Math.floor(Math.random() * 1000) + ".lua";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setStatus("ดาวน์โหลดไฟล์ .lua เรียบร้อยแล้ว", "#ffffff");
+        }
+
+        function clearAll() {
+            document.getElementById("inputLua").value = "";
+            document.getElementById("outputLua").value = "";
+            updateStats("", "");
+            setStatus("ล้างข้อมูลเรียบร้อย", "#a1a1aa");
+        }
+
+        window.onload = function() {
+            document.getElementById("inputLua").value = "";
+            updateStats("", "");
+        };
+    </script>
+</body>
+</html>
